@@ -20,9 +20,9 @@ window.KONFIG = {
      Klucz `anon` jest publiczny z założenia, bo zasady dostępu ustawia SQL,
      nie tajność klucza. Nigdy nie wklejaj tu klucza `service_role`. */
   baza: {
-    typ: 'lokalny',
-    url: '',                        // np. 'https://abcdefgh.supabase.co'
-    klucz: '',                      // klucz anon (publiczny)
+    typ: 'supabase',
+    url: 'https://dhzjqxhoiaroauimoepq.supabase.co',                        // np. 'https://dhzjqxhoiaroauimoepq.supabase.co'
+    klucz: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRoempxeGhvaWFyb2F1aW1vZXBxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4OTI4MjksImV4cCI6MjEwMDQ2ODgyOX0.NbGtNJfofzyGgoa9Vkq93H7nATrsQivpsJt0fuUS2tU',                      // klucz anon (publiczny)
     tabela: 'punkty',
     odswiezanieSek: 15              // co ile sekund dociągać zmiany innych osób
   },
