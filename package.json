@@ -1,0 +1,13 @@
+{
+  "name": "mapa-projektow",
+  "version": "1.0.0",
+  "description": "Punkty na mapie Polski z kartą projektu, wspólną edycją przez link i układaniem trasy.",
+  "scripts": {
+    "test": "node tools/test.js"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  },
+  "license": "MIT",
+  "private": true
+}
