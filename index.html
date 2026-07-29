@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=5">
+<title>Mapa projektów</title>
+<meta name="description" content="Punkty na mapie Polski z kartą projektu, wspólną edycją i układaniem trasy.">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#FBF5DD">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@700&display=swap&text=ADKS0123456789">
+<style>
+:root{
+  --paper:#FBF5DD; --paper-2:#F4EED6; --card:#E9E3CB;
+  --line:#DCD5B8; --line-soft:#E3DEC6;
+  --ink:#3A3E2C; --ink-2:#616650; --ink-3:#A09B81;
+  --brass:#A8873E; --brass-soft:#C9AE6B;
+  --ok:#5F7148; --warn:#B08A3E; --err:#A14A3C;
+  --sh-1:0 1px 2px rgba(58,62,44,.06);
+  --sh-2:0 4px 16px rgba(58,62,44,.10);
+  --sh-3:0 12px 32px rgba(58,62,44,.18);
+  --r-sm:10px; --r-md:16px; --r-lg:22px; --r-pill:999px;
+  --font:'Segoe UI',system-ui,-apple-system,Roboto,'Helvetica Neue',Arial,sans-serif;
+  --tap:44px;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overscroll-behavior:none}
+body{
+  font-family:var(--font);font-weight:500;font-size:15px;line-height:1.45;
+  color:var(--ink);background:var(--paper);-webkit-text-size-adjust:100%;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2{margin:0;font-weight:800;letter-spacing:-.01em}
+
+/* =================== układ =================== */
+#app{display:flex;flex-direction:column;height:100%;width:100%}
+#mapwrap{order:1;flex:1 1 auto;min-height:28vh;position:relative}
+#map{position:absolute;inset:0;background:var(--paper-2)}
+#map.stawiam{cursor:crosshair}
+#panel{
+  order:2;width:100%;flex:0 0 auto;max-height:66vh;min-height:0;
+  display:flex;flex-direction:column;background:var(--paper);
+  border-radius:var(--r-lg) var(--r-lg) 0 0;margin-top:-18px;
+  border-top:1px solid var(--line);box-shadow:0 -10px 28px rgba(58,62,44,.14);
+  position:relative;z-index:20;
+}
+#panel.min{max-height:none}
+#panel.min #body,#panel.min #tabs{display:none}
+#panel.min #handle{transform:rotate(180deg)}
+
+#phead{display:flex;align-items:center;gap:11px;padding:11px 14px 9px;border-bottom:1px solid var(--line)}
+.mark{width:34px;height:34px;flex:0 0 34px;border-radius:10px;background:var(--ink);color:var(--paper);display:grid;place-items:center}
+#phead h1{font-size:15px;line-height:1.15}
+#phead .sub{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+#handle{
+  margin-left:auto;width:var(--tap);height:36px;border-radius:11px;border:1px solid var(--line);
+  background:var(--paper);cursor:pointer;color:var(--ink-2);font-size:13px;
+  display:grid;place-items:center;transition:transform .2s ease;
+}
+#handle:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+#tabs{display:flex;gap:3px;padding:8px 10px 0;border-bottom:1px solid var(--line)}
+.tab{
+  flex:1;min-height:40px;padding:8px 4px 10px;background:none;border:0;cursor:pointer;
+  font-size:13.5px;font-weight:700;color:var(--ink-3);
+  border-bottom:2.5px solid transparent;margin-bottom:-1px;border-radius:7px 7px 0 0;
+}
+.tab.on{color:var(--ink);border-bottom-color:var(--brass)}
+.tab:focus-visible{outline:2px solid var(--brass);outline-offset:-2px}
+.tab .b{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:var(--r-pill);
+  background:var(--card);color:var(--ink-2);font-size:11px;font-weight:800}
+.tab.on .b{background:var(--ink);color:var(--paper)}
+
+#body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px;min-height:0}
+.page{display:none}
+.page.on{display:block}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:13px;margin-bottom:11px;box-shadow:var(--sh-1)}
+.eyebrow{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.17em;color:var(--ink-3);margin-bottom:9px;display:flex;align-items:center;gap:8px}
+.eyebrow .n{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-pill);padding:1px 7px;letter-spacing:.04em;color:var(--ink-2)}
+.muted{font-weight:600;color:var(--ink-2);font-size:13.5px}
+.tiny{font-size:12px;font-weight:600;color:var(--ink-3)}
+.row{display:flex;gap:8px;align-items:center}
+.row.wrap{flex-wrap:wrap}
+.grow{flex:1;min-width:0}
+
+.inp,textarea,select{
+  width:100%;padding:11px 12px;background:var(--paper);border:1px solid var(--line);
+  border-radius:var(--r-sm);font-weight:600;font-size:16px;min-height:var(--tap);
+}
+textarea{resize:vertical;min-height:92px;line-height:1.5}
+.inp:focus,textarea:focus,select:focus{outline:2px solid var(--brass);outline-offset:-1px;border-color:var(--brass)}
+
+.btn{
+  min-height:var(--tap);padding:10px 14px;border-radius:var(--r-sm);border:1px solid var(--line);
+  background:var(--paper);cursor:pointer;font-size:14px;font-weight:700;
+  display:inline-flex;align-items:center;gap:7px;justify-content:center;
+  transition:background .14s ease,transform .14s ease;
+}
+.btn:hover{background:var(--paper-2)}
+.btn:active{transform:scale(.985)}
+.btn:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.btn[disabled]{opacity:.42;cursor:not-allowed}
+.btn.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn.primary:hover{background:#2F3324}
+.btn.wide{width:100%}
+.btn.sm{min-height:34px;padding:6px 10px;font-size:12.5px;border-radius:8px}
+.btn.on{background:var(--brass);border-color:var(--brass);color:#2F3324}
+.btn.zly{color:var(--err)}
+
+/* =================== lista punktów =================== */
+#filtry{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.fchip{
+  display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:var(--r-pill);
+  border:1px solid var(--line);background:var(--paper);cursor:pointer;
+  font-size:12px;font-weight:700;color:var(--ink-2);min-height:30px;
+}
+.fchip .dot{width:9px;height:9px;border-radius:50%;flex:0 0 9px;background:var(--ink-3)}
+.fchip .c{font-size:10.5px;font-weight:800;color:var(--ink-3)}
+.fchip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.fchip.on .c{color:var(--brass-soft)}
+
+#lista{margin:0;padding:0;list-style:none}
+.pi{display:grid;grid-template-columns:auto 1fr auto;gap:9px;padding:9px 0;align-items:start;cursor:pointer}
+.pi+.pi{border-top:1px solid var(--line-soft)}
+.pi:hover{background:var(--paper-2)}
+.pi .kropka{width:12px;height:12px;border-radius:50%;margin-top:4px;border:2px solid var(--paper);box-shadow:0 0 0 1px var(--line)}
+.pi .t{min-width:0;line-height:1.3}
+.pi .t b{font-size:14px;font-weight:700;display:block;word-break:break-word}
+.pi .t small{font-size:11.5px;font-weight:600;color:var(--ink-2);display:block}
+.pi .akcje{display:flex;gap:4px}
+.ibtn{
+  width:32px;height:30px;border:1px solid var(--line);background:var(--paper);border-radius:8px;
+  cursor:pointer;font-size:12px;line-height:1;color:var(--ink-2);display:grid;place-items:center;
+  padding:0;text-decoration:none;
+}
+.ibtn:hover{background:var(--paper-2);color:var(--ink)}
+.ibtn:focus-visible{outline:2px solid var(--brass);outline-offset:1px}
+.ibtn.on{background:var(--brass);border-color:var(--brass);color:#2F3324}
+.ibtn.zly:hover{color:var(--err);border-color:var(--err)}
+
+/* =================== formularz karty =================== */
+#sheet{
+  position:fixed;inset:0;z-index:1200;display:none;
+  background:rgba(45,48,35,.42);backdrop-filter:blur(2px);
+}
+#sheet.on{display:flex;align-items:flex-end;justify-content:center}
+#sheetBox{
+  width:100%;max-width:560px;max-height:92vh;display:flex;flex-direction:column;
+  background:var(--paper);border-radius:var(--r-lg) var(--r-lg) 0 0;
+  border:1px solid var(--line);box-shadow:var(--sh-3);
+  animation:wjazd .2s cubic-bezier(.2,.7,.3,1);
+}
+@keyframes wjazd{from{transform:translateY(22px);opacity:.4}to{transform:translateY(0);opacity:1}}
+#sheetHead{display:flex;align-items:center;gap:10px;padding:13px 15px;border-bottom:1px solid var(--line)}
+#sheetHead h2{font-size:15px;flex:1;min-width:0}
+#sheetHead .wstega{width:6px;height:30px;border-radius:3px;background:var(--ink-3)}
+#sheetBody{flex:1;overflow-y:auto;padding:13px 15px}
+#sheetFoot{display:flex;gap:8px;padding:11px 15px calc(11px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+#sheetFoot .btn{flex:1}
+.fld{margin-bottom:11px}
+.fld label{display:block;font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);margin-bottom:5px}
+.fld .jedn{font-weight:700;color:var(--ink-2);font-size:13px;padding:0 2px}
+.fld.wyl label::after{content:' · z granic';color:var(--brass);letter-spacing:0;text-transform:none;font-size:10px}
+.fld .zle{border-color:var(--err);outline-color:var(--err)}
+.wsp{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+/* =================== karta na mapie =================== */
+.leaflet-popup-content-wrapper{background:var(--paper);border-radius:var(--r-md);box-shadow:var(--sh-3);border:1px solid var(--line)}
+.leaflet-popup-content{margin:0;font-size:13.5px;font-weight:600;width:262px!important}
+.leaflet-popup-tip{background:var(--paper)}
+.kt{padding:11px 13px 0;position:relative}
+.kt .wst{position:absolute;left:0;top:11px;bottom:2px;width:4px;border-radius:0 3px 3px 0;background:var(--ink-3)}
+.kt h3{margin:0;font-size:15px;font-weight:800;line-height:1.2;padding-left:8px}
+.kt .lok{font-size:12px;font-weight:700;color:var(--ink-2);margin:3px 0 0;padding-left:8px}
+.kt dl{margin:10px 0 0;padding:0 0 0 8px;display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:12.5px}
+.kt dt{font-weight:700;color:var(--ink-3);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding-top:2px}
+.kt dd{margin:0;font-weight:600;word-break:break-word}
+.kt dd a{color:var(--ink);text-decoration:underline;text-underline-offset:2px}
+.kt .stopka{font-size:10.5px;font-weight:600;color:var(--ink-3);padding:9px 0 0 8px;border-top:1px solid var(--line-soft);margin-top:10px}
+.kt-btns{display:flex;gap:6px;padding:9px 13px 11px;flex-wrap:wrap}
+.kt-btns .btn{flex:1;min-height:36px;font-size:12.5px;padding:6px 8px}
+
+/* =================== mapa =================== */
+.leaflet-tile-pane{filter:sepia(.32) saturate(.62) brightness(1.04) contrast(.96) hue-rotate(-8deg)}
+#map.plain .leaflet-tile-pane{filter:none}
+.leaflet-container{font-family:var(--font);font-weight:600;background:var(--paper-2)}
+.leaflet-control-zoom a{color:var(--ink)!important;background:var(--paper)!important;border-color:var(--line)!important;font-weight:700}
+.leaflet-control-attribution{background:rgba(251,245,221,.86)!important;font-size:9.5px!important;color:var(--ink-2)!important;max-width:62vw}
+.leaflet-control-attribution a{color:var(--ink-2)!important}
+
+.pin{width:26px;height:34px;display:block}
+.pin svg{display:block;filter:drop-shadow(0 2px 3px rgba(58,62,44,.35))}
+.pin .nr{
+  position:absolute;left:50%;top:-8px;transform:translateX(-50%);
+  background:var(--brass);color:#2F3324;border:1.5px solid var(--paper);
+  border-radius:var(--r-pill);min-width:18px;height:18px;padding:0 4px;
+  font:800 11px/16px var(--font);text-align:center;
+}
+.pin-wrap{position:relative}
+
+#baseBtn{
+  position:absolute;right:10px;top:96px;z-index:600;width:var(--tap);height:var(--tap);
+  border-radius:13px;background:var(--paper);border:1px solid var(--line);
+  box-shadow:var(--sh-2);cursor:pointer;display:grid;place-items:center;color:var(--ink);
+}
+#baseBtn:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+#basePanel{
+  position:absolute;right:10px;top:96px;z-index:610;
+  background:rgba(45,48,35,.94);border:1px solid rgba(251,245,221,.18);
+  border-radius:18px;padding:11px;box-shadow:var(--sh-3);backdrop-filter:blur(8px);
+  max-width:min(340px,calc(100vw - 20px));
+}
+#basePanel .eyebrow{color:rgba(251,245,221,.62);margin-bottom:8px}
+.bases{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.bases::-webkit-scrollbar{display:none}
+.base{
+  flex:0 0 96px;border:2px solid transparent;border-radius:12px;padding:0;overflow:hidden;
+  background:rgba(251,245,221,.08);cursor:pointer;text-align:left;color:var(--paper);
+  transition:border-color .16s ease,transform .16s ease;
+}
+.base:hover{transform:translateY(-1px)}
+.base:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.base.on{border-color:#7FB3E8}
+.base img{display:block;width:96px;height:62px;object-fit:cover;background:rgba(251,245,221,.12)}
+.base .lab{padding:6px 7px 8px;display:block;line-height:1.2}
+.base .lab b{display:block;font-size:12px;font-weight:800}
+.base .lab small{display:block;font-size:10px;font-weight:600;color:rgba(251,245,221,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+#hint{
+  position:absolute;left:50%;bottom:12px;transform:translateX(-50%);z-index:600;
+  background:rgba(58,62,44,.92);color:var(--paper);border-radius:var(--r-pill);
+  padding:8px 15px;font-size:12.5px;font-weight:700;box-shadow:var(--sh-2);
+  max-width:86%;text-align:center;display:flex;align-items:center;gap:10px;
+}
+#hint[hidden]{display:none}
+#hint button{background:none;border:0;color:var(--brass-soft);font-weight:800;cursor:pointer;padding:0 2px;font-size:12.5px}
+
+/* =================== dok =================== */
+.dock{
+  flex:0 0 auto;padding:9px 12px calc(10px + env(safe-area-inset-bottom));
+  background:var(--paper);border-top:1px solid var(--line);
+}
+#stan{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;color:var(--ink-3);margin-bottom:8px;flex-wrap:wrap}
+#stan .kropka{width:8px;height:8px;border-radius:50%;background:var(--ink-3);flex:0 0 8px}
+#stan.ok .kropka{background:var(--ok)}
+#stan.wait .kropka{background:var(--warn)}
+#stan.err .kropka{background:var(--err)}
+#stan .lok{margin-left:auto}
+.dbtns{display:grid;grid-template-columns:1fr auto;gap:8px}
+.act{
+  display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:10px 12px;
+  border-radius:var(--r-lg);cursor:pointer;font-size:14.5px;font-weight:800;border:1.5px solid;
+  transition:transform .14s ease,background .14s ease;
+}
+.act:active{transform:scale(.985)}
+.act:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
+.act[disabled]{opacity:.4;cursor:not-allowed}
+.act-add{background:var(--brass);border-color:var(--brass);color:#2F3324;box-shadow:var(--sh-2)}
+.act-add:hover:not([disabled]){background:#B8963F}
+.act-add.on{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.act-2{background:var(--paper);border-color:var(--line);color:var(--ink);width:54px;padding:0}
+
+.go{
+  display:flex;align-items:center;gap:12px;width:100%;padding:13px 15px;
+  border-radius:var(--r-lg);background:var(--ink);color:var(--paper);
+  text-decoration:none;border:0;cursor:pointer;text-align:left;
+  box-shadow:var(--sh-3),inset 0 1px 0 rgba(251,245,221,.15);
+  transition:transform .16s ease,background .16s ease;min-height:58px;
+}
+.go:hover{background:#2F3324}
+.go:focus-visible{outline:3px solid var(--brass);outline-offset:3px}
+.go-ico{width:38px;height:38px;flex:0 0 38px;border-radius:12px;background:var(--brass);color:#2F3324;display:grid;place-items:center}
+.go-txt{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+.go-txt b{font-size:15px;font-weight:800}
+.go-txt small{font-size:12px;font-weight:600;color:var(--brass-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.go-arrow{margin-left:auto;font-size:19px;opacity:.5}
+.go.off{pointer-events:none;background:var(--card);color:var(--ink-3);box-shadow:none;border:1px solid var(--line)}
+.go.off .go-ico{background:var(--line);color:var(--ink-3)}
+.go.off .go-txt small{color:var(--ink-3)}
+
+/* =================== trasa =================== */
+.modes{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.mode{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  min-height:68px;padding:9px 5px;border-radius:var(--r-md);cursor:pointer;
+  border:1.5px solid var(--line);background:var(--paper);color:var(--ink-2);
+  font-size:11.5px;font-weight:700;line-height:1.2;text-align:center;
+}
+.mode:hover{border-color:var(--ink-3);color:var(--ink)}
+.mode:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.mode.on{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.m-ico svg{width:23px;height:23px}
+.mode.on .ico-loop{animation:obrot .95s cubic-bezier(.5,0,.2,1)}
+@keyframes obrot{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+
+#stops{margin:0;padding:0;list-style:none}
+.stop{display:grid;grid-template-columns:20px 28px 1fr auto;gap:9px;position:relative;padding:9px 0;align-items:center}
+.stop+.stop{border-top:1px solid var(--line-soft)}
+.drag{width:20px;height:30px;display:grid;place-items:center;cursor:grab;color:var(--ink-3);
+  font-size:13px;border:0;background:none;padding:0;touch-action:none;border-radius:6px}
+.drag:hover{color:var(--ink);background:var(--paper-2)}
+.stop-n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;
+  font-size:12px;font-weight:700;background:var(--paper);color:var(--ink);border:1.5px solid var(--line)}
+.stop.is-start .stop-n{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.stop.is-end .stop-n{background:var(--brass);color:#2F3324;border-color:var(--brass)}
+.stop-name{font-weight:700;font-size:13.5px;word-break:break-word;line-height:1.25}
+.stop-name small{display:block;font-size:11.5px;font-weight:600;color:var(--ink-2)}
+.stop.lift{cursor:grabbing;background:var(--paper);border-radius:var(--r-md);box-shadow:var(--sh-3);z-index:5}
+
+#resStrip{
+  display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  background:var(--paper);border:1px solid var(--line);border-radius:var(--r-md);
+  padding:9px 11px;margin-top:10px;
+}
+.rs-main{display:flex;align-items:baseline;gap:8px;font-weight:800;font-size:17px;letter-spacing:-.02em}
+.rs-main span{font-size:13.5px;font-weight:700;color:var(--ink-2);letter-spacing:0}
+.rs-roads{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
+.rs-note{flex-basis:100%;font-size:11.5px;font-weight:600;color:var(--ink-3)}
+.shield{
+  font-family:'Overpass',var(--font);font-weight:700;color:#fff;
+  padding:2px 7px 3px;border-radius:4px;font-size:11px;line-height:1.15;display:inline-block;
+}
+.shield.A,.shield.S{background:#2C4A6B}
+.shield.DK{background:#A1443A}
+.road-icon{width:auto!important;height:auto!important}
+.road-pin{
+  font-family:'Overpass',var(--font);font-weight:700;color:#fff;position:absolute;
+  transform:translate(-50%,-50%);padding:3px 8px 4px;border-radius:5px;font-size:12px;
+  border:1.5px solid #FBF5DD;box-shadow:0 1px 4px rgba(0,0,0,.35);white-space:nowrap;
+}
+.road-pin.A,.road-pin.S{background:#2C4A6B}
+.road-pin.DK{background:#A1443A}
+#segs .sg{display:flex;align-items:center;gap:8px;padding:6px 0}
+#segs .sg+.sg{border-top:1px solid var(--line-soft)}
+#segs .sg-n{width:22px;height:22px;flex:0 0 22px;border-radius:7px;background:var(--card);border:1px solid var(--line);display:grid;place-items:center;font-size:11px;font-weight:700}
+#segs .sg-b{flex:1;min-width:0;line-height:1.25}
+#segs .sg-b b{font-size:12.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#segs .sg-b small{font-size:11px;font-weight:600;color:var(--ink-3)}
+
+/* =================== wyniki wyszukiwania, weryfikacja =================== */
+.res{max-height:38vh;overflow-y:auto;margin-top:8px}
+.ri{display:flex;align-items:center;gap:9px;padding:10px 9px;border-radius:9px;cursor:pointer;border:1px solid transparent;min-height:var(--tap)}
+.ri:hover{background:var(--paper-2);border-color:var(--line)}
+.ri .t{flex:1;min-width:0;line-height:1.25}
+.ri .t b{font-size:13.5px;font-weight:700;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ri .t small{font-size:11.5px;font-weight:600;color:var(--ink-2)}
+.kind{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;border-radius:var(--r-pill);padding:2px 6px;background:var(--paper-2);border:1px solid var(--line);color:var(--ink-3)}
+.kind.g{background:rgba(110,122,75,.16);border-color:#B6BE9B;color:#4A5730}
+
+.vt{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:9px}
+.vt th{text-align:left;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);padding:5px 4px;border-bottom:1px solid var(--line)}
+.vt td{padding:5px 4px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+.vt input{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:7px;background:var(--paper);font-size:16px;font-weight:600}
+.vs{width:8px;height:8px;border-radius:50%;display:inline-block;background:var(--ink-3)}
+.vs.ok{background:var(--ok)} .vs.err{background:var(--err)} .vs.wait{background:var(--warn)}
+.vt tr.ok td{background:rgba(95,113,72,.07)}
+.vt tr.err td{background:rgba(161,74,60,.07)}
+
+.notice{display:flex;gap:9px;padding:9px 11px;border-radius:var(--r-sm);font-size:12.5px;font-weight:600;margin-bottom:10px;border:1px solid}
+.notice.warn{background:#F7F0D9;border-color:var(--brass-soft);color:#6E5820}
+.notice.err{background:#F6E6E2;border-color:#D8AFA6;color:#7C3427}
+
+.scan{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-md);padding:6px;margin-bottom:10px}
+.scan svg{display:block;width:100%;height:auto;max-height:88px}
+.scan .sheet rect,.scan .sheet path{fill:var(--paper-2);stroke:var(--ink-2);stroke-width:1.6}
+.scan .sheet path{fill:none}
+.scan .lines rect{fill:var(--ink-3)}
+.scan .lines rect:nth-child(odd){fill:var(--line)}
+.scan .phone rect{fill:var(--paper-2);stroke:var(--ink);stroke-width:1.8}
+.scan .phone .screen{fill:var(--card);stroke:none}
+.scan .phone circle{fill:var(--ink-3)}
+.scan .rays path{stroke:var(--brass);stroke-width:1.8;stroke-linecap:round;opacity:.55}
+.scan .beam{fill:var(--brass);opacity:.85;animation:skan 2.6s ease-in-out infinite}
+@keyframes skan{
+  0%,8%{transform:translateY(0);opacity:0}
+  12%{opacity:.9} 88%{opacity:.9}
+  92%,100%{transform:translateY(58px);opacity:0}
+}
+
+/* =================== komunikat =================== */
+#toast{
+  position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);
+  z-index:1400;background:var(--ink);color:var(--paper);border-radius:var(--r-pill);
+  padding:10px 18px;font-size:13px;font-weight:700;box-shadow:var(--sh-3);
+  max-width:90vw;text-align:center;opacity:0;pointer-events:none;transition:opacity .2s ease;
+}
+#toast.on{opacity:1}
+#toast.zly{background:var(--err)}
+
+/* =================== duże ekrany =================== */
+@media (min-width:880px){
+  #app{flex-direction:row}
+  #mapwrap{order:2;flex:1 1 auto;min-height:0}
+  #panel{order:1;width:406px;flex:0 0 406px;max-height:none;margin-top:0;
+    border-radius:0;border-top:0;border-right:1px solid var(--line);box-shadow:none}
+  #handle{display:none}
+  #phead{padding:16px 18px 12px}
+  #body{padding:14px}
+  #baseBtn,#basePanel{top:12px;right:64px}
+  #hint{bottom:auto;top:16px}
+  #sheet.on{align-items:center}
+  #sheetBox{border-radius:var(--r-lg)}
+  .base{flex:0 0 104px}
+  .base img{width:104px;height:66px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <main id="mapwrap">
+    <div id="map"></div>
+
+    <button id="baseBtn" aria-label="Mapa bazowa" aria-expanded="false">
+      <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="12 2 22 8 12 14 2 8 12 2"/><polyline points="2 14 12 20 22 14"/>
+      </svg>
+    </button>
+
+    <div id="basePanel" hidden>
+      <div class="eyebrow">Mapa bazowa</div>
+      <div class="bases" id="bases"></div>
+    </div>
+
+    <div id="hint" hidden><span id="hintTxt"></span><button id="hintX" type="button">Anuluj</button></div>
+  </main>
+
+  <aside id="panel">
+    <div id="phead">
+      <div class="mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="sub" id="hSub">Punkty · karty · trasy</div>
+        <h1 id="hTytul">Mapa projektów</h1>
+      </div>
+      <button id="handle" title="Zwiń panel" aria-label="Zwiń panel">▾</button>
+    </div>
+
+    <nav id="tabs" role="tablist">
+      <button class="tab on" data-page="pgPunkty" role="tab">Punkty<span class="b" id="cntPkt">0</span></button>
+      <button class="tab" data-page="pgDodaj" role="tab">Dodaj</button>
+      <button class="tab" data-page="pgTrasa" role="tab">Trasa<span class="b" id="cntTrasa">0</span></button>
+      <button class="tab" data-page="pgBaza" role="tab">Baza</button>
+    </nav>
+
+    <div id="body">
+
+      <!-- ============ PUNKTY ============ -->
+      <section class="page on" id="pgPunkty" role="tabpanel">
+        <div class="card">
+          <div class="eyebrow">Szukaj w punktach</div>
+          <input class="inp" id="szukaj" placeholder="nazwa, miejscowość, osoba…" autocomplete="off">
+          <div id="filtry"></div>
+        </div>
+        <div class="card">
+          <div class="eyebrow">Punkty <span class="n" id="cntPkt2">0</span></div>
+          <p class="muted" id="pustaLista">Pusto. Zakładka <b>Dodaj</b> albo przycisk <b>Nowy punkt</b> pod spodem.</p>
+          <ul id="lista"></ul>
+        </div>
+      </section>
+
+      <!-- ============ DODAJ ============ -->
+      <section class="page" id="pgDodaj" role="tabpanel">
+        <div class="card">
+          <div class="eyebrow">Wskaż na mapie</div>
+          <button class="btn wide primary" id="btnStaw">Postaw punkt kliknięciem</button>
+          <p class="tiny" style="margin:8px 0 0">Gmina, powiat i województwo wpiszą się same z granic.</p>
+        </div>
+
+        <div class="card">
+          <div class="eyebrow">Adres, miejscowość, gmina</div>
+          <input class="inp" id="qAdres" placeholder="np. Żywiec, Rynek 2 albo powiat żywiecki" autocomplete="off" enterkeyhint="search">
+          <div class="res" id="qres"></div>
+          <div class="row" style="margin-top:9px">
+            <button class="btn grow" id="btnSzukajAdres">Szukaj adresu</button>
+            <button class="btn" id="btnGeo" title="Moja lokalizacja" aria-label="Moja lokalizacja">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="eyebrow">Współrzędne</div>
+          <select class="inp" id="uklad" style="margin-bottom:8px">
+            <option value="wgs">WGS 84 (stopnie dziesiętne)</option>
+            <option value="pl1992">PL-1992 (EPSG:2180), metry</option>
+          </select>
+          <div class="wsp">
+            <input class="inp" id="wsp1" placeholder="49.6853" inputmode="decimal">
+            <input class="inp" id="wsp2" placeholder="19.1922" inputmode="decimal">
+          </div>
+          <button class="btn wide" id="btnWsp" style="margin-top:8px">Postaw punkt</button>
+        </div>
+
+        <div class="card">
+          <div class="eyebrow">Lista adresów</div>
+          <textarea id="listIn" placeholder="Jeden adres w wierszu:&#10;Rynek 1, Żywiec&#10;ul. Sienkiewicza 20, Kielce"></textarea>
+          <button class="btn wide" id="btnList" style="margin-top:8px">Sprawdź adresy</button>
+        </div>
+
+        <div class="card">
+          <div class="eyebrow">Zdjęcie albo zrzut ekranu</div>
+          <div class="scan" aria-hidden="true">
+            <svg viewBox="0 0 168 92">
+              <g class="sheet"><rect x="10" y="10" width="72" height="74" rx="5"/><path d="M70 10v12h12"/></g>
+              <g class="lines">
+                <rect x="20" y="26" width="38" height="3.4" rx="1.7"/>
+                <rect x="20" y="36" width="50" height="3.4" rx="1.7"/>
+                <rect x="20" y="46" width="44" height="3.4" rx="1.7"/>
+                <rect x="20" y="56" width="52" height="3.4" rx="1.7"/>
+                <rect x="20" y="66" width="34" height="3.4" rx="1.7"/>
+              </g>
+              <rect class="beam" x="12" y="14" width="68" height="4" rx="2"/>
+              <g class="phone">
+                <rect x="98" y="14" width="58" height="66" rx="8"/>
+                <rect x="104" y="24" width="46" height="42" rx="3" class="screen"/>
+                <circle cx="127" cy="73" r="3.2"/>
+              </g>
+              <g class="rays"><path d="M88 34h6"/><path d="M88 46h10"/><path d="M88 58h6"/></g>
+            </svg>
+          </div>
+          <button class="btn wide" id="btnOCR">Odczytaj adresy z obrazu</button>
+          <input type="file" id="photo" accept="image/*" hidden>
+          <p class="tiny" style="margin:8px 0 0">Przy pierwszym użyciu pobiera się słownik, około 15 MB.</p>
+        </div>
+
+        <div class="card" id="verifyCard" style="display:none">
+          <div class="eyebrow">Znalezione adresy <span class="n" id="vCnt">0</span></div>
+          <div id="verifyBox"></div>
+          <button class="btn wide primary" id="btnAddVerified" style="margin-top:10px">Utwórz punkty</button>
+        </div>
+      </section>
+
+      <!-- ============ TRASA ============ -->
+      <section class="page" id="pgTrasa" role="tabpanel">
+        <div class="card">
+          <div class="eyebrow">Jak kończy się trasa</div>
+          <div class="modes" id="modeSeg">
+            <button class="mode on" data-mode="loop">
+              <span class="m-ico"><svg class="ico-loop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 12a8.5 8.5 0 1 1-2.5-6"/><polyline points="18.6 1.8 18.6 6.4 14 6.4"/></svg></span>
+              <span>Pętla</span>
+            </button>
+            <button class="mode" data-mode="ends">
+              <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M5 22V3"/><g stroke="none" fill="currentColor"><rect x="7" y="4" width="4" height="3.4"/><rect x="15" y="4" width="4" height="3.4"/><rect x="11" y="7.4" width="4" height="3.4"/><rect x="7" y="10.8" width="4" height="3.4"/><rect x="15" y="10.8" width="4" height="3.4"/></g></svg></span>
+              <span>Start → meta</span>
+            </button>
+            <button class="mode" data-mode="open">
+              <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h5"/><path d="M9.5 12h6" stroke-dasharray="3 3.5"/><path d="M17 12h4"/><polyline points="17.8 8.6 21.4 12 17.8 15.4"/></svg></span>
+              <span>Otwarta</span>
+            </button>
+          </div>
+          <p class="tiny" id="modeHint" style="margin:9px 0 0">Wracasz tam, skąd wyjechałeś.</p>
+        </div>
+
+        <div class="card">
+          <div class="eyebrow">Przystanki <span class="n" id="cntTrasa2">0</span></div>
+          <p class="muted" id="pustaTrasa">Zaznacz punkty ikoną trasy w liście albo w karcie na mapie.</p>
+          <ul id="stops"></ul>
+          <button class="btn wide" id="btnOpt" disabled style="margin-top:10px">Wyznacz kolejność</button>
+          <div id="resStrip" hidden>
+            <div class="rs-main"><b id="rsDist">–</b><span id="rsTime">–</span></div>
+            <div class="rs-roads" id="rsRoads"></div>
+            <div class="rs-note" id="rsNote"></div>
+          </div>
+          <div id="segs"></div>
+        </div>
+      </section>
+
+      <!-- ============ BAZA ============ -->
+      <section class="page" id="pgBaza" role="tabpanel">
+        <div class="card">
+          <div class="eyebrow">Zbiór punktów</div>
+          <div class="row">
+            <input class="inp grow" id="kolekcjaIn" readonly>
+            <button class="btn" id="btnKopiuj">Kopiuj link</button>
+          </div>
+          <p class="tiny" id="opisBazy" style="margin:9px 0 0"></p>
+          <div class="row wrap" style="margin-top:9px">
+            <button class="btn sm" id="btnNowaKolekcja">Nowy, pusty zbiór</button>
+            <button class="btn sm" id="btnOdswiez">Odśwież z bazy</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="eyebrow">Podpis pod zmianami</div>
+          <input class="inp" id="autorIn" placeholder="Imię albo inicjały" maxlength="40">
+          <p class="tiny" style="margin:8px 0 0">Zapisuje się przy każdej zmianie punktu, żeby było wiadomo, kto poprawiał.</p>
+        </div>
+
+        <div class="card">
+          <div class="eyebrow">Kopia i wymiana danych</div>
+          <div class="row wrap">
+            <button class="btn sm" id="btnExpGeo">Eksport GeoJSON</button>
+            <button class="btn sm" id="btnExpCsv">Eksport CSV</button>
+            <button class="btn sm" id="btnImp">Import pliku</button>
+            <input type="file" id="plik" accept=".geojson,.json,.csv,.txt" hidden>
+          </div>
+          <p class="tiny" style="margin:9px 0 0">Import dokłada punkty do zbioru. GeoJSON zachowuje wszystkie pola, CSV tylko kolumny nagłówka.</p>
+        </div>
+
+        <div class="card">
+          <div class="eyebrow">Granice pod punktami</div>
+          <div class="row wrap">
+            <button class="btn sm" id="btnGranice">Pokaż granice</button>
+            <button class="btn sm zly" id="btnKasuj">Usuń wszystkie punkty</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="eyebrow">Skąd dane</div>
+          <p class="tiny" style="margin:0">Granice gmin i powiatów: GUGiK i Geoportal. Siedziby urzędów: rejestr PRNG.
+          Adresy: Nominatim. Kolejność przystanków: OSRM. Nawigacja: Google Maps. Odczyt z obrazu: Tesseract.js.</p>
+        </div>
+      </section>
+
+    </div>
+
+    <div class="dock">
+      <div id="stan"><span class="kropka"></span><span id="stanTxt">Wczytuję…</span></div>
+
+      <div class="dbtns" id="dockDodaj">
+        <button class="act act-add" id="btnNowy">
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          <span id="btnNowyTxt">Nowy punkt</span>
+        </button>
+        <button class="act act-2" id="btnUdostepnij" title="Kopiuj link do zbioru" aria-label="Kopiuj link do zbioru">
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
+        </button>
+      </div>
+
+      <a class="go off" id="btnGo" target="_blank" rel="noopener" hidden>
+        <span class="go-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/>
+          </svg>
+        </span>
+        <span class="go-txt"><b>Nawiguj w Google Maps</b><small id="goSub">zaznacz co najmniej dwa punkty</small></span>
+        <span class="go-arrow" aria-hidden="true">→</span>
+      </a>
+    </div>
+  </aside>
+</div>
+
+<!-- formularz karty -->
+<div id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTytul">
+  <div id="sheetBox">
+    <div id="sheetHead">
+      <span class="wstega" id="sheetWstega"></span>
+      <h2 id="sheetTytul">Nowy punkt</h2>
+      <button class="ibtn" id="sheetX" aria-label="Zamknij">✕</button>
+    </div>
+    <div id="sheetBody"></div>
+    <div id="sheetFoot">
+      <button class="btn zly" id="sheetUsun">Usuń</button>
+      <button class="btn primary" id="sheetZapisz">Zapisz</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="config.js"></script>
+<script src="store.js"></script>
+<script src="data/granice.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
