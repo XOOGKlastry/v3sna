@@ -20,9 +20,9 @@ window.KONFIG = {
      Klucz `anon` jest publiczny z założenia, bo zasady dostępu ustawia SQL,
      nie tajność klucza. Nigdy nie wklejaj tu klucza `service_role`. */
   baza: {
-    typ: 'supabase',
-    url: 'https://dhzjqxhoiaroauimoepq.supabase.co',                        // np. 'https://dhzjqxhoiaroauimoepq.supabase.co'
-    klucz: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRoempxeGhvaWFyb2F1aW1vZXBxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4OTI4MjksImV4cCI6MjEwMDQ2ODgyOX0.NbGtNJfofzyGgoa9Vkq93H7nATrsQivpsJt0fuUS2tU',                      // klucz anon (publiczny)
+    typ: 'lokalny',
+    url: '',                        // np. 'https://abcdefgh.supabase.co'
+    klucz: '',                      // klucz anon (publiczny)
     tabela: 'punkty',
     odswiezanieSek: 15              // co ile sekund dociągać zmiany innych osób
   },
@@ -44,50 +44,28 @@ window.KONFIG = {
      filtr: dorzucić do filtrów nad listą (tylko dla typu 'lista')
      wyliczane: pole uzupełniane automatycznie z granic, edytowalne ręcznie   */
   pola: [
-    { klucz: 'nazwa', etykieta: 'Nazwa projektu', typ: 'tekst',
+    { klucz: 'nazwa', etykieta: 'Nazwa', typ: 'tekst',
       wymagane: true, wKarcie: false, naLiscie: false },
 
     { klucz: 'status', etykieta: 'Status', typ: 'lista', filtr: true, wKarcie: true, naLiscie: true,
       domyslna: 'planowany',
       opcje: [
-        { wartosc: 'planowany',       kolor: '#6B7A8F' },
-        { wartosc: 'w przygotowaniu', kolor: '#A8873E' },
-        { wartosc: 'w realizacji',    kolor: '#5F7148' },
-        { wartosc: 'zakończony',      kolor: '#3A3E2C' },
-        { wartosc: 'wstrzymany',      kolor: '#A14A3C' }
+        { wartosc: 'planowany',    kolor: '#6B7A8F' },
+        { wartosc: 'w realizacji', kolor: '#5F7148' },
+        { wartosc: 'zakończony',   kolor: '#3A3E2C' },
+        { wartosc: 'wstrzymany',   kolor: '#A14A3C' }
       ] },
 
-    { klucz: 'rodzaj', etykieta: 'Rodzaj przedsięwzięcia', typ: 'lista', filtr: true, wKarcie: true, naLiscie: true,
+    // Podmień wartości pakietu na własne. Kolor jest opcjonalny.
+    { klucz: 'pakiet', etykieta: 'Pakiet', typ: 'lista', filtr: true, wKarcie: true, naLiscie: true,
       opcje: [
-        { wartosc: 'fotowoltaika' }, { wartosc: 'elektrownia wiatrowa' },
-        { wartosc: 'biogazownia' }, { wartosc: 'magazyn energii' },
-        { wartosc: 'pompy ciepła' }, { wartosc: 'kogeneracja' },
-        { wartosc: 'sieć ciepłownicza' }, { wartosc: 'termomodernizacja' },
-        { wartosc: 'oświetlenie uliczne' }, { wartosc: 'sieć elektroenergetyczna' },
-        { wartosc: 'inne' }
+        { wartosc: 'P1' }, { wartosc: 'P2' }, { wartosc: 'P3' }, { wartosc: 'P4' }
       ] },
 
-    { klucz: 'miejscowosc', etykieta: 'Miejscowość', typ: 'tekst', wKarcie: true },
-    { klucz: 'adres', etykieta: 'Adres', typ: 'tekst', wKarcie: true },
-
-    { klucz: 'gmina',       etykieta: 'Gmina',        typ: 'tekst', wyliczane: true, wKarcie: true },
-    { klucz: 'powiat',      etykieta: 'Powiat',       typ: 'tekst', wyliczane: true },
-    { klucz: 'wojewodztwo', etykieta: 'Województwo',  typ: 'tekst', wyliczane: true, filtr: true },
-    { klucz: 'teryt',       etykieta: 'TERYT gminy',  typ: 'tekst', wyliczane: true },
-
-    { klucz: 'osoba',   etykieta: 'Osoba zarządzająca', typ: 'tekst', wKarcie: true, naLiscie: true },
-    { klucz: 'telefon', etykieta: 'Telefon', typ: 'telefon' },
-    { klucz: 'email',   etykieta: 'E-mail',  typ: 'email' },
-
-    { klucz: 'inwestor', etykieta: 'Inwestor', typ: 'tekst', wKarcie: true },
-    { klucz: 'moc',      etykieta: 'Moc', typ: 'liczba', jednostka: 'kW', wKarcie: true },
-    { klucz: 'budzet',   etykieta: 'Budżet', typ: 'liczba', jednostka: 'zł' },
-    { klucz: 'zrodlo',   etykieta: 'Źródło finansowania', typ: 'tekst' },
-
-    { klucz: 'start',  etykieta: 'Rozpoczęcie',  typ: 'data', wKarcie: true },
-    { klucz: 'koniec', etykieta: 'Zakończenie',  typ: 'data' },
-
-    { klucz: 'link',     etykieta: 'Odnośnik', typ: 'url', wKarcie: true },
-    { klucz: 'notatki',  etykieta: 'Notatki',  typ: 'wielolinijkowy', wKarcie: true }
+    { klucz: 'miejscowosc',  etykieta: 'Miejscowość',  typ: 'tekst', wyliczane: true, wKarcie: true, naLiscie: true },
+    { klucz: 'adres',        etykieta: 'Adres',        typ: 'tekst', wKarcie: true },
+    { klucz: 'podwykonawca', etykieta: 'Podwykonawca', typ: 'tekst', wKarcie: true },
+    { klucz: 'zakres',       etykieta: 'Zakres',       typ: 'wielolinijkowy', wKarcie: true },
+    { klucz: 'notatki',      etykieta: 'Notatki',      typ: 'wielolinijkowy', wKarcie: true }
   ]
 };
