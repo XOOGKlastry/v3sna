@@ -314,10 +314,10 @@ function ortoUrl(z, y, x) {
 }
 
 var PODKLADY = [
-  { id: 'mapa', nazwa: 'Mapa', zrodlo: 'CARTO Voyager', cieply: true,
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    opcje: { subdomains: 'abcd', maxZoom: 19, attribution: '&copy; OpenStreetMap, &copy; CARTO' },
-    podglad: 'https://a.basemaps.cartocdn.com/rastertiles/voyager/' + PODGLAD_Z + '/' + PODGLAD_X + '/' + PODGLAD_Y + '.png' },
+  { id: 'mapa', nazwa: 'Mapa', zrodlo: 'Esri World Street Map',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+    opcje: { maxZoom: 19, attribution: 'Tiles &copy; <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom' },
+    podglad: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/' + PODGLAD_Z + '/' + PODGLAD_Y + '/' + PODGLAD_X },
   { id: 'satelita', nazwa: 'Satelita', zrodlo: 'Geoportal GUGiK',
     url: ortoUrl('{z}', '{y}', '{x}'),
     opcje: { maxZoom: 19, maxNativeZoom: 19, attribution: 'Ortofotomapa: <a href="https://www.geoportal.gov.pl/">GUGiK</a>' },
